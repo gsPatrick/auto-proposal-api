@@ -192,16 +192,32 @@ class ProposalService {
       raw: true
     });
 
-    const chartData = await ProposalLog.findAll({
+    // Dados para o Gráfico (Agrupados por Data e Plataforma)
+    const chartRaw = await ProposalLog.findAll({
       where,
       attributes: [
         [fn('DATE', col('createdAt')), 'date'],
+        'platform',
         [fn('SUM', col('cost')), 'cost'],
       ],
-      group: [fn('DATE', col('createdAt'))],
+      group: [fn('DATE', col('createdAt')), 'platform'],
       order: [[fn('DATE', col('createdAt')), 'ASC']],
       raw: true
     });
+
+    // Formata dados para o gráfico comparativo
+    const chartMap = {};
+    chartRaw.forEach(d => {
+      const dateStr = new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      if (!chartMap[dateStr]) {
+        chartMap[dateStr] = { name: dateStr, total: 0 };
+      }
+      const platformKey = d.platform.toLowerCase();
+      chartMap[dateStr][platformKey] = parseFloat(d.cost || 0);
+      chartMap[dateStr].total += parseFloat(d.cost || 0);
+    });
+
+    const chartData = Object.values(chartMap);
 
     const totalCost = parseFloat(metrics[0].totalCost || 0);
     const totalProposals = parseInt(metrics[0].totalProposals || 0);
@@ -213,10 +229,7 @@ class ProposalService {
       totalProposals,
       totalTokens: totalTokensInput + totalTokensOutput,
       avgCostPerProposal: totalProposals > 0 ? (totalCost / totalProposals) : 0,
-      chartData: chartData.map(d => ({
-        name: new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-        total: parseFloat(d.cost || 0)
-      }))
+      chartData
     };
   }
 
