@@ -61,6 +61,7 @@ class BalanceController {
         order: [['createdAt', 'DESC']],
         limit: 100
       });
+      console.log(`[DB] Encontradas ${history.length} transações no histórico.`);
       res.json(history);
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
