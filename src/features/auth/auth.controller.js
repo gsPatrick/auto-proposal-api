@@ -19,6 +19,50 @@ class AuthController {
     }
   }
 
+  async getUserMetrics(req, res) {
+    try {
+      const users = await User.findAll({
+        where: {
+          email: { [Op.ne]: 'patricksiqueira.developer@gmail.com' }
+        },
+        attributes: ['id', 'name', 'email']
+      });
+
+      const metrics = await Promise.all(users.map(async (user) => {
+        const logs = await ProposalLog.findAll({ where: { userId: user.id } });
+        
+        const totalSpent = logs.reduce((sum, log) => sum + parseFloat(log.cost || 0), 0);
+        const proposalCount = logs.length;
+        
+        // Calcular Top Model
+        const models = logs.map(l => l.model);
+        const topModel = models.sort((a,b) =>
+            models.filter(v => v===a).length - models.filter(v => v===b).length
+        ).pop() || 'N/A';
+
+        // Calcular Top Platform
+        const platforms = logs.map(l => l.platform);
+        const topPlatform = platforms.sort((a,b) =>
+            platforms.filter(v => v===a).length - platforms.filter(v => v===b).length
+        ).pop() || 'N/A';
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          totalSpent,
+          proposalCount,
+          topModel,
+          topPlatform
+        };
+      }));
+
+      res.json(metrics);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
   async login(req, res) {
     try {
       const { email, password } = req.body;
