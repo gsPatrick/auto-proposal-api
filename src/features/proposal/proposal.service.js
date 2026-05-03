@@ -1,6 +1,7 @@
 const axios = require('axios');
 const ProposalLog = require('../../models/ProposalLog');
 const Setting = require('../../models/Setting');
+const BalanceTransaction = require('../../models/BalanceTransaction');
 
 // Preços por 1M tokens (Maio 2026)
 const PRICES = {
@@ -36,11 +37,35 @@ class ProposalService {
     // Calcula custo
     const cost = this._calculateCost(model, result.usage);
 
-    // Salva no Banco de Dados
+    // --- GESTÃO DE SALDO (POR PROVEDOR) ---
+    const balanceKey = `balance_${provider}`;
+    let currentBalanceSetting = await Setting.findByPk(balanceKey);
+    let currentBalance = currentBalanceSetting ? parseFloat(currentBalanceSetting.value) : 0;
+    let newBalance = currentBalance - cost;
+
+    if (!currentBalanceSetting) {
+      await Setting.create({ key: balanceKey, value: newBalance });
+    } else {
+      await currentBalanceSetting.update({ value: newBalance });
+    }
+
+    // Registra Transação de Débito
+    await BalanceTransaction.create({
+      type: 'usage',
+      provider: provider,
+      amount: cost,
+      previousBalance: currentBalance,
+      newBalance: newBalance,
+      description: `Disparo ${platform} (${model})`,
+      userId: data.userId,
+      userName: data.userName
+    });
+
+    // Salva no Banco de Dados (Log de Proposta)
     const log = await ProposalLog.create({
       provider,
       model,
-      platform,
+      platform: platform.trim(), // Limpa espaços para o filtro funcionar
       proposalData,
       aiResponse: result.data,
       tokensInput: result.usage.input,
@@ -52,13 +77,14 @@ class ProposalService {
 
     // LOG EM UMA LINHA NO TERMINAL
     const timestamp = new Date().toLocaleString('pt-BR');
-    console.log(`[${timestamp}] 🚀 ${provider.toUpperCase()} (${model}) | Custo: $${cost.toFixed(4)} | Tokens: IN:${result.usage.input} OUT:${result.usage.output} | Plataforma: ${platform}`);
+    console.log(`[${timestamp}] 🚀 ${provider.toUpperCase()} (${model}) | Custo: $${cost.toFixed(4)} | Saldo: $${newBalance.toFixed(4)} | Usuário: ${data.userName}`);
 
     return {
       success: true,
       data: result.data,
       logId: log.id,
-      cost
+      cost,
+      newBalance
     };
   }
 
@@ -200,7 +226,9 @@ class ProposalService {
     }
     
     // Filtros Cumulativos
-    if (filters.platform) where.platform = filters.platform;
+    if (filters.platform) {
+      where.platform = { [Op.iLike]: filters.platform };
+    }
     if (filters.provider) where.provider = filters.provider;
     if (filters.model) where.model = filters.model;
     if (filters.userId) where.userId = filters.userId;

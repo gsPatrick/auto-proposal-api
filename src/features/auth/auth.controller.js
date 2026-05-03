@@ -1,11 +1,17 @@
 const User = require('../../models/User');
 const ProposalLog = require('../../models/ProposalLog');
+const { Op } = require('sequelize');
 
 class AuthController {
   
   async listUsers(req, res) {
     try {
-      const users = await User.findAll({ attributes: ['id', 'name', 'email'] });
+      const users = await User.findAll({ 
+        where: {
+          email: { [Op.ne]: 'patricksiqueira.developer@gmail.com' }
+        },
+        attributes: ['id', 'name', 'email'] 
+      });
       res.json(users);
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
