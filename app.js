@@ -50,7 +50,7 @@ async function startServer() {
 
     const historyCount = await BalanceTransaction.count();
     if (historyCount === 0) {
-      console.log('🌱 Gerando depósito inicial de $10...');
+      console.log('🌱 Gerando saldo inicial corrigido ($9.9554)...');
       
       const userId = admin ? admin.id : null;
       const userName = admin ? admin.name : 'Patrick Siqueira';
@@ -67,10 +67,23 @@ async function startServer() {
         userName
       });
 
-      // 2. Atualiza Saldo Global para 10.00 exatos
-      await Setting.upsert({ key: 'balance_openai', value: '10.00' });
+      // 2. Gasto Real relatado pelo usuário
+      const realUsage = 0.0446;
+      await BalanceTransaction.create({
+        type: 'usage',
+        provider: 'openai',
+        amount: realUsage,
+        previousBalance: 10.00,
+        newBalance: 10.00 - realUsage,
+        description: 'Disparo Realizado',
+        userId,
+        userName
+      });
+
+      // 3. Atualiza Saldo Global para o valor real
+      await Setting.upsert({ key: 'balance_openai', value: (10.00 - realUsage).toString() });
       
-      console.log('✅ Depósito inicial gerado.');
+      console.log('✅ Histórico e saldo real inicializados.');
     }
 
     app.listen(PORT, () => {
