@@ -142,47 +142,54 @@ class ProposalService {
     const totalCount = await ProposalLog.count();
 
     // 2. Gasto por Provedor
-    const spendByProvider = await ProposalLog.findAll({
+    const where = this._getDateFilter(range);
+    
+    const metrics = await ProposalLog.findAll({
+      where,
       attributes: [
-        'provider',
         [fn('SUM', col('cost')), 'totalCost'],
-        [fn('COUNT', col('id')), 'count']
+        [fn('COUNT', col('id')), 'totalProposals'],
+        [fn('SUM', col('tokensInput')), 'totalTokensInput'],
+        [fn('SUM', col('tokensOutput')), 'totalTokensOutput'],
       ],
-      group: ['provider']
+      raw: true
     });
 
-    // 3. Gasto Diário (Últimos 30 dias)
-    const dailySpend = await ProposalLog.findAll({
+    const chartData = await ProposalLog.findAll({
+      where,
       attributes: [
         [fn('DATE', col('createdAt')), 'date'],
-        [fn('SUM', col('cost')), 'totalCost']
+        [fn('SUM', col('cost')), 'cost'],
       ],
-      where: {
-        createdAt: { [Op.gte]: new Date(now.setDate(now.getDate() - 30)) }
-      },
       group: [fn('DATE', col('createdAt'))],
-      order: [[fn('DATE', col('createdAt')), 'DESC']]
+      order: [[fn('DATE', col('createdAt')), 'ASC']],
+      raw: true
     });
 
-    // 4. Gasto Mensal
-    const monthlySpend = await ProposalLog.findAll({
-      attributes: [
-        [fn('DATE_TRUNC', 'month', col('createdAt')), 'month'],
-        [fn('SUM', col('cost')), 'totalCost']
-      ],
-      group: [fn('DATE_TRUNC', 'month', col('createdAt'))],
-      order: [[fn('DATE_TRUNC', 'month', col('createdAt')), 'DESC']]
-    });
+    const totalCost = parseFloat(metrics[0].totalCost || 0);
+    const totalProposals = parseInt(metrics[0].totalProposals || 0);
+    const totalTokensInput = parseInt(metrics[0].totalTokensInput || 0);
+    const totalTokensOutput = parseInt(metrics[0].totalTokensOutput || 0);
 
     return {
-      summary: {
-        totalSpend: parseFloat(totalSpend).toFixed(4),
-        totalCount
-      },
-      byProvider: spendByProvider,
-      daily: dailySpend,
-      monthly: monthlySpend
+      totalCost,
+      totalProposals,
+      totalTokens: totalTokensInput + totalTokensOutput,
+      avgCostPerProposal: totalProposals > 0 ? (totalCost / totalProposals) : 0,
+      chartData: chartData.map(d => ({
+        name: new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        total: parseFloat(d.cost || 0)
+      }))
     };
+  }
+
+  _getDateFilter(range) {
+    const { Op } = require('sequelize');
+    const date = new Date();
+    if (range === 'week') date.setDate(date.getDate() - 7);
+    else if (range === 'month') date.setMonth(date.getMonth() - 1);
+    else return {};
+    return { createdAt: { [Op.gte]: date } };
   }
 }
 
