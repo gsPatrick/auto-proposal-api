@@ -61,9 +61,20 @@ class ProposalService {
   }
 
   async _getApiKey(provider) {
+    // 1. Tenta buscar nas variáveis de ambiente do servidor (.env)
+    const envKeyMap = {
+      'openai': 'OPENAI_API_KEY',
+      'claude': 'ANTHROPIC_API_KEY',
+      'gemini': 'GEMINI_API_KEY',
+      'groq': 'GROQ_API_KEY'
+    };
+    
+    const envKey = process.env[envKeyMap[provider]];
+    if (envKey) return envKey;
+
+    // 2. Fallback: Busca na tabela de settings do banco de dados
     const setting = await Setting.findByPk(`${provider}_keys`);
     if (setting && setting.value && setting.value.length > 0) {
-      // Retorna a primeira chave (ou implementa rotação aqui)
       return setting.value[0];
     }
     return null;
