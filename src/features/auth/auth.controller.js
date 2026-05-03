@@ -1,4 +1,5 @@
 const User = require('../../models/User');
+const ProposalLog = require('../../models/ProposalLog');
 
 class AuthController {
   
@@ -39,17 +40,30 @@ class AuthController {
   // Método para garantir que o usuário padrão exista
   async seedAdmin() {
     try {
-      const count = await User.count();
-      if (count === 0) {
-        await User.create({
-          email: 'patricksiqueira.developer@gmail.com',
-          password: 'patrick123',
-          name: 'Patrick Siqueira'
+      const users = [
+        { email: 'patrick@gmail.com', password: 'patrick123', name: 'Patrick Siqueira' },
+        { email: 'beatrizmello@gmail.com', password: 'beatrizmello123', name: 'Beatriz Nascimento' },
+        { email: 'patricksiqueira.developer@gmail.com', password: 'patrick123', name: 'Patrick Siqueira' }
+      ];
+
+      for (const userData of users) {
+        const [user, created] = await User.findOrCreate({
+          where: { email: userData.email },
+          defaults: userData
         });
-        console.log('✅ Usuário admin padrão criado.');
+        if (created) console.log(`✅ Usuário ${userData.name} criado.`);
+        
+        // Se for o Patrick, vincula os logs órfãos
+        if (userData.email === 'patrick@gmail.com') {
+          const [updated] = await ProposalLog.update(
+            { userId: user.id, userName: user.name },
+            { where: { userName: null } }
+          );
+          if (updated > 0) console.log(`📊 Migrados ${updated} logs antigos para o perfil do Patrick.`);
+        }
       }
     } catch (error) {
-      console.error('❌ Erro ao criar admin padrão:', error);
+      console.error('❌ Erro ao inicializar usuários/migração:', error);
     }
   }
 }

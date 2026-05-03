@@ -38,6 +38,14 @@ const ProposalLog = sequelize.define('ProposalLog', {
   cost: {
     type: DataTypes.DECIMAL(10, 6),
     defaultValue: 0.0
+  },
+  userId: {
+    type: DataTypes.UUID,
+    allowNull: true
+  },
+  userName: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   timestamps: true

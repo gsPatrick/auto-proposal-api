@@ -45,7 +45,9 @@ class ProposalService {
       aiResponse: result.data,
       tokensInput: result.usage.input,
       tokensOutput: result.usage.output,
-      cost
+      cost,
+      userId: data.userId,
+      userName: data.userName
     });
 
     // LOG EM UMA LINHA NO TERMINAL
