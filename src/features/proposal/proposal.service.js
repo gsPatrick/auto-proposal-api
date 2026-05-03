@@ -133,15 +133,10 @@ class ProposalService {
     };
   }
 
-  async getMetrics() {
+  async getMetrics(range = 'week') {
     const { Op, fn, col } = require('sequelize');
-    const now = new Date();
 
-    // 1. Gasto Total (All Time)
-    const totalSpend = await ProposalLog.sum('cost') || 0;
-    const totalCount = await ProposalLog.count();
-
-    // 2. Gasto por Provedor
+    // Filtro de Data
     const where = this._getDateFilter(range);
     
     const metrics = await ProposalLog.findAll({
@@ -186,9 +181,19 @@ class ProposalService {
   _getDateFilter(range) {
     const { Op } = require('sequelize');
     const date = new Date();
-    if (range === 'week') date.setDate(date.getDate() - 7);
-    else if (range === 'month') date.setMonth(date.getMonth() - 1);
-    else return {};
+    
+    if (range === 'day') {
+      date.setHours(0, 0, 0, 0);
+    } else if (range === 'week') {
+      date.setDate(date.getDate() - 7);
+    } else if (range === 'month') {
+      date.setMonth(date.getMonth() - 1);
+    } else if (range === 'year') {
+      date.setFullYear(date.getFullYear() - 1);
+    } else {
+      return {};
+    }
+    
     return { createdAt: { [Op.gte]: date } };
   }
 }
