@@ -40,50 +40,49 @@ async function startServer() {
     // Cria usuário padrão se não existir
     const [admin] = await AuthController.seedAdmin();
 
+    // --- FORÇAR HISTÓRICO E SALDO REAL (REQUISIÇÃO DO USUÁRIO) ---
     const BalanceTransaction = require('./src/models/BalanceTransaction');
-    const ProposalLog = require('./src/models/ProposalLog');
     const Setting = require('./src/models/Setting');
 
-    // --- TEMPORARY CLEANUP (Remove simulated usage) ---
-    await BalanceTransaction.destroy({ where: { type: 'usage', description: 'Disparo OpenAI (gpt-4o)' } });
-    await ProposalLog.destroy({ where: { platform: 'Upwork', model: 'gpt-4o' } });
+    try {
+      const admin = (await AuthController.listUsers({ body: {} }, { json: () => {} }))?.[0] || { id: null, name: 'Patrick Siqueira' };
+      const userId = admin.id;
+      const userName = admin.name;
 
-    const historyCount = await BalanceTransaction.count();
-    if (historyCount === 0) {
-      console.log('🌱 Gerando saldo inicial corrigido ($9.9554)...');
-      
-      const userId = admin ? admin.id : null;
-      const userName = admin ? admin.name : 'Patrick Siqueira';
+      console.log('🔍 Verificando integridade da carteira...');
 
-      // 1. Depósito de $10
-      await BalanceTransaction.create({
-        type: 'deposit',
-        provider: 'openai',
-        amount: 10.00,
-        previousBalance: 0,
-        newBalance: 10.00,
-        description: 'Depósito Inicial (OpenAI)',
-        userId,
-        userName
+      // 1. Garante o Depósito de $10
+      const [deposit, createdDep] = await BalanceTransaction.findOrCreate({
+        where: { type: 'deposit', amount: 10.00, provider: 'openai' },
+        defaults: {
+          previousBalance: 0,
+          newBalance: 10.00,
+          description: 'Depósito Inicial (OpenAI)',
+          userId,
+          userName
+        }
       });
+      if (createdDep) console.log('✅ Depósito de $10 criado.');
 
-      // 2. Gasto Real relatado pelo usuário
-      const realUsage = 0.0446;
-      await BalanceTransaction.create({
-        type: 'usage',
-        provider: 'openai',
-        amount: realUsage,
-        previousBalance: 10.00,
-        newBalance: 10.00 - realUsage,
-        description: 'Disparo Realizado',
-        userId,
-        userName
+      // 2. Garante o Gasto de $0.0446
+      const [usage, createdUsage] = await BalanceTransaction.findOrCreate({
+        where: { type: 'usage', amount: 0.0446, provider: 'openai' },
+        defaults: {
+          previousBalance: 10.00,
+          newBalance: 9.9554,
+          description: 'Disparo Realizado',
+          userId,
+          userName
+        }
       });
+      if (createdUsage) console.log('✅ Gasto de $0.0446 registrado.');
 
-      // 3. Atualiza Saldo Global para o valor real
-      await Setting.upsert({ key: 'balance_openai', value: (10.00 - realUsage).toString() });
-      
-      console.log('✅ Histórico e saldo real inicializados.');
+      // 3. Força Saldo Final
+      await Setting.upsert({ key: 'balance_openai', value: '9.9554' });
+      console.log('✅ Saldo OpenAI fixado em $9.9554');
+
+    } catch (err) {
+      console.error('❌ Erro ao sincronizar carteira:', err.message);
     }
 
     app.listen(PORT, () => {
