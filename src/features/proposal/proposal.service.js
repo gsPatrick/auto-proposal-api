@@ -48,6 +48,10 @@ class ProposalService {
       cost
     });
 
+    // LOG EM UMA LINHA NO TERMINAL
+    const timestamp = new Date().toLocaleString('pt-BR');
+    console.log(`[${timestamp}] 🚀 ${provider.toUpperCase()} (${model}) | Custo: $${cost.toFixed(4)} | Tokens: IN:${result.usage.input} OUT:${result.usage.output} | Plataforma: ${platform}`);
+
     return {
       success: true,
       data: result.data,
