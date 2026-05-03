@@ -135,11 +135,11 @@ class ProposalService {
     };
   }
 
-  async getMetrics(range = 'week') {
+  async getMetrics(range = 'week', filters = {}) {
     const { Op, fn, col } = require('sequelize');
 
-    // Filtro de Data
-    const where = this._getDateFilter(range);
+    // Filtros de Data e Outros (Cumulativos)
+    const where = this._getDateFilter(range, filters);
     
     const metrics = await ProposalLog.findAll({
       where,
@@ -180,23 +180,32 @@ class ProposalService {
     };
   }
 
-  _getDateFilter(range) {
+  _getDateFilter(range, filters = {}) {
     const { Op } = require('sequelize');
     const date = new Date();
+    const where = {};
     
     if (range === 'day') {
       date.setHours(0, 0, 0, 0);
+      where.createdAt = { [Op.gte]: date };
     } else if (range === 'week') {
       date.setDate(date.getDate() - 7);
+      where.createdAt = { [Op.gte]: date };
     } else if (range === 'month') {
       date.setMonth(date.getMonth() - 1);
+      where.createdAt = { [Op.gte]: date };
     } else if (range === 'year') {
       date.setFullYear(date.getFullYear() - 1);
-    } else {
-      return {};
+      where.createdAt = { [Op.gte]: date };
     }
     
-    return { createdAt: { [Op.gte]: date } };
+    // Filtros Cumulativos
+    if (filters.platform) where.platform = filters.platform;
+    if (filters.provider) where.provider = filters.provider;
+    if (filters.model) where.model = filters.model;
+    if (filters.userId) where.userId = filters.userId;
+
+    return where;
   }
 }
 

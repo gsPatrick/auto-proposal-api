@@ -3,6 +3,15 @@ const ProposalLog = require('../../models/ProposalLog');
 
 class AuthController {
   
+  async listUsers(req, res) {
+    try {
+      const users = await User.findAll({ attributes: ['id', 'name', 'email'] });
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
   async login(req, res) {
     try {
       const { email, password } = req.body;
@@ -47,23 +56,13 @@ class AuthController {
       ];
 
       for (const userData of users) {
-        const [user, created] = await User.findOrCreate({
+        await User.findOrCreate({
           where: { email: userData.email },
           defaults: userData
         });
-        if (created) console.log(`✅ Usuário ${userData.name} criado.`);
-        
-        // Se for o Patrick, vincula os logs órfãos
-        if (userData.email === 'patrick@gmail.com') {
-          const [updated] = await ProposalLog.update(
-            { userId: user.id, userName: user.name },
-            { where: { userName: null } }
-          );
-          if (updated > 0) console.log(`📊 Migrados ${updated} logs antigos para o perfil do Patrick.`);
-        }
       }
     } catch (error) {
-      console.error('❌ Erro ao inicializar usuários/migração:', error);
+      console.error('❌ Erro ao inicializar usuários:', error);
     }
   }
 }

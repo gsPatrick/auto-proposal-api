@@ -37,7 +37,16 @@ class ProposalController {
 
   async getLogs(req, res) {
     try {
-      const logs = await ProposalLog.findAll({ order: [['createdAt', 'DESC']], limit: 50 });
+      const { range, platform, provider, model, userId } = req.query;
+      const filters = { platform, provider, model, userId };
+      
+      const where = ProposalService._getDateFilter(range || 'all', filters);
+      
+      const logs = await ProposalLog.findAll({ 
+        where,
+        order: [['createdAt', 'DESC']], 
+        limit: 100 
+      });
       res.json(logs);
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -46,7 +55,8 @@ class ProposalController {
 
   async metrics(req, res) {
     try {
-      const metrics = await ProposalService.getMetrics();
+      const { range, platform, provider, model, userId } = req.query;
+      const metrics = await ProposalService.getMetrics(range, { platform, provider, model, userId });
       res.json(metrics);
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
