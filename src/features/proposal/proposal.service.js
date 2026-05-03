@@ -50,30 +50,43 @@ class ProposalService {
     }
 
     // Registra Transação de Débito
-    await BalanceTransaction.create({
-      type: 'usage',
-      provider: provider,
-      amount: cost,
-      previousBalance: currentBalance,
-      newBalance: newBalance,
-      description: `Disparo ${platform} (${model})`,
-      userId: data.userId,
-      userName: data.userName
-    });
+    try {
+      console.log(`[BALANCE] Registrando consumo de $${cost.toFixed(4)} para ${provider}`);
+      await BalanceTransaction.create({
+        type: 'usage',
+        provider: provider,
+        amount: cost,
+        previousBalance: currentBalance,
+        newBalance: newBalance,
+        description: `Disparo ${platform} (${model})`,
+        userId: data.userId,
+        userName: data.userName
+      });
+      console.log(`[BALANCE] Transação registrada com sucesso.`);
+    } catch (err) {
+      console.error(`[BALANCE ERROR] Erro ao salvar transação:`, err.message);
+    }
 
     // Salva no Banco de Dados (Log de Proposta)
-    const log = await ProposalLog.create({
-      provider,
-      model,
-      platform: platform.trim(), // Limpa espaços para o filtro funcionar
-      proposalData,
-      aiResponse: result.data,
-      tokensInput: result.usage.input,
-      tokensOutput: result.usage.output,
-      cost,
-      userId: data.userId,
-      userName: data.userName
-    });
+    let log;
+    try {
+      console.log(`[LOG] Salvando log de proposta para ${platform}`);
+      log = await ProposalLog.create({
+        provider,
+        model,
+        platform: platform.trim(), // Limpa espaços para o filtro funcionar
+        proposalData,
+        aiResponse: result.data,
+        tokensInput: result.usage.input,
+        tokensOutput: result.usage.output,
+        cost,
+        userId: data.userId,
+        userName: data.userName
+      });
+      console.log(`[LOG] Log salvo com sucesso. ID: ${log.id}`);
+    } catch (err) {
+      console.error(`[LOG ERROR] Erro ao salvar log de proposta:`, err.message);
+    }
 
     // LOG EM UMA LINHA NO TERMINAL
     const timestamp = new Date().toLocaleString('pt-BR');

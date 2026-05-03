@@ -38,16 +38,22 @@ class BalanceController {
       }
 
       // Registra transação
-      await BalanceTransaction.create({
-        type: 'deposit',
-        provider: provider,
-        amount: numAmount,
-        previousBalance: currentBalance,
-        newBalance: newBalance,
-        description: description || `Depósito Manual (${provider})`,
-        userId,
-        userName
-      });
+      try {
+        console.log(`[DEPOSIT] Registrando depósito de $${numAmount} para ${provider}`);
+        await BalanceTransaction.create({
+          type: 'deposit',
+          provider: provider,
+          amount: numAmount,
+          previousBalance: currentBalance,
+          newBalance: newBalance,
+          description: description || `Depósito Manual (${provider})`,
+          userId,
+          userName
+        });
+        console.log(`[DEPOSIT] Depósito registrado com sucesso.`);
+      } catch (err) {
+        console.error(`[DEPOSIT ERROR] Erro ao salvar transação de depósito:`, err.message);
+      }
 
       res.json({ success: true, newBalance });
     } catch (error) {

@@ -32,7 +32,7 @@ const BalanceTransaction = sequelize.define('BalanceTransaction', {
     allowNull: true
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: true
   },
   userName: {
