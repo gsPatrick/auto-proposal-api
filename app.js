@@ -16,14 +16,18 @@ app.use('/api', routes);
 // Database Sync & Server Start
 const PORT = process.env.PORT || 3000;
 
+const AuthController = require('./src/features/auth/auth.controller');
+
 async function startServer() {
   try {
     await sequelize.authenticate();
     console.log('✅ Conectado ao Postgres com sucesso!');
 
-    // Sincroniza os modelos com o banco (cria as tabelas se não existirem)
     await sequelize.sync({ alter: true });
     console.log('✅ Modelos sincronizados.');
+
+    // Cria usuário padrão se não existir
+    await AuthController.seedAdmin();
 
     app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`);
