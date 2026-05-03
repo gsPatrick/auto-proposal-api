@@ -13,7 +13,11 @@ const BalanceTransaction = sequelize.define('BalanceTransaction', {
   },
   provider: {
     type: DataTypes.STRING,
-    allowNull: true // Pode ser nulo para depósitos gerais se houver, mas idealmente vinculado
+    allowNull: true
+  },
+  model: {
+    type: DataTypes.STRING,
+    allowNull: true
   },
   amount: {
     type: DataTypes.DECIMAL(10, 4),

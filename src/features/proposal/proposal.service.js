@@ -55,6 +55,7 @@ class ProposalService {
       await BalanceTransaction.create({
         type: 'usage',
         provider: provider,
+        model: model,
         amount: cost,
         previousBalance: currentBalance,
         newBalance: newBalance,
