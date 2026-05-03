@@ -1,5 +1,6 @@
 const User = require('../../models/User');
 const ProposalLog = require('../../models/ProposalLog');
+const Setting = require('../../models/Setting');
 const { Op } = require('sequelize');
 
 class AuthController {
@@ -55,6 +56,7 @@ class AuthController {
   // Método para garantir que o usuário padrão exista
   async seedAdmin() {
     try {
+      // Seed Usuários
       const users = [
         { email: 'patrick@gmail.com', password: 'patrick123', name: 'Patrick Siqueira' },
         { email: 'beatrizmello@gmail.com', password: 'beatrizmello123', name: 'Beatriz Nascimento' },
@@ -67,8 +69,27 @@ class AuthController {
           defaults: userData
         });
       }
+
+      // Seed Saldo Inicial Inteligente (OpenAI)
+      const openaiBalanceKey = 'balance_openai';
+      const existingBalance = await Setting.findByPk(openaiBalanceKey);
+
+      if (!existingBalance) {
+        // Busca todos os gastos da OpenAI já registrados
+        const totalSpent = await ProposalLog.sum('cost', { where: { provider: 'openai' } }) || 0;
+        const initialCredit = 10.00;
+        const finalBalance = initialCredit - totalSpent;
+
+        await Setting.create({
+          key: openaiBalanceKey,
+          value: finalBalance.toString()
+        });
+        
+        console.log(`[Finance] Saldo inicial OpenAI configurado: $${finalBalance} (Gasto detectado: $${totalSpent})`);
+      }
+
     } catch (error) {
-      console.error('❌ Erro ao inicializar usuários:', error);
+      console.error('Erro no seedAdmin:', error);
     }
   }
 }
