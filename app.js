@@ -85,6 +85,20 @@ async function startServer() {
       console.error('❌ Erro ao sincronizar carteira:', err.message);
     }
 
+    // --- CORREÇÃO PONTUAL: ÚLTIMO DISPARO FOI NO WORKANA ---
+    try {
+      const ProposalLog = require('./src/models/ProposalLog');
+      const lastLog = await ProposalLog.findOne({ order: [['createdAt', 'DESC']] });
+      if (lastLog && lastLog.platform === '99freelas') {
+        console.log(`🔧 Corrigindo plataforma do último log (ID: ${lastLog.id}) para Workana...`);
+        lastLog.platform = 'workana';
+        await lastLog.save();
+        console.log('✅ Último log corrigido.');
+      }
+    } catch (logErr) {
+      console.error('❌ Erro ao corrigir último log:', logErr.message);
+    }
+
     app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`);
     });
