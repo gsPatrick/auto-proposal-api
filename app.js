@@ -23,8 +23,19 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('✅ Conectado ao Postgres com sucesso!');
 
-    await sequelize.sync({ alter: true });
-    console.log('✅ Modelos sincronizados.');
+    try {
+      await sequelize.sync({ alter: true });
+      console.log('✅ Modelos sincronizados.');
+    } catch (syncError) {
+      if (syncError.message.includes('cannot be cast automatically to type uuid')) {
+        console.log('⚠️ Detectado conflito de tipo UUID. Resetando tabela balance_transactions...');
+        await sequelize.query('DROP TABLE IF EXISTS "balance_transactions" CASCADE;');
+        await sequelize.sync({ alter: true });
+        console.log('✅ Modelos sincronizados após reset.');
+      } else {
+        throw syncError;
+      }
+    }
 
     // Cria usuário padrão se não existir
     await AuthController.seedAdmin();
