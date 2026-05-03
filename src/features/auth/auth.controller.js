@@ -107,12 +107,17 @@ class AuthController {
         { email: 'patricksiqueira.developer@gmail.com', password: 'patrick123', name: 'Patrick Siqueira' }
       ];
 
+      const createdUsers = [];
       for (const userData of users) {
-        await User.findOrCreate({
+        const [user] = await User.findOrCreate({
           where: { email: userData.email },
           defaults: userData
         });
+        createdUsers.push(user);
       }
+      
+      // ... (saldo logic) ...
+      return createdUsers;
 
       // Seed Saldo Inicial Inteligente (OpenAI)
       const openaiBalanceKey = 'balance_openai';
