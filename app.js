@@ -40,14 +40,17 @@ async function startServer() {
     // Cria usuário padrão se não existir
     const [admin] = await AuthController.seedAdmin();
 
-    // --- SEED DE HISTÓRICO INICIAL (REQUISIÇÃO DO USUÁRIO) ---
     const BalanceTransaction = require('./src/models/BalanceTransaction');
     const ProposalLog = require('./src/models/ProposalLog');
     const Setting = require('./src/models/Setting');
 
+    // --- TEMPORARY CLEANUP (Remove simulated usage) ---
+    await BalanceTransaction.destroy({ where: { type: 'usage', description: 'Disparo OpenAI (gpt-4o)' } });
+    await ProposalLog.destroy({ where: { platform: 'Upwork', model: 'gpt-4o' } });
+
     const historyCount = await BalanceTransaction.count();
     if (historyCount === 0) {
-      console.log('🌱 Gerando histórico inicial (Depósito + Disparo)...');
+      console.log('🌱 Gerando depósito inicial de $10...');
       
       const userId = admin ? admin.id : null;
       const userName = admin ? admin.name : 'Patrick Siqueira';
@@ -64,37 +67,10 @@ async function startServer() {
         userName
       });
 
-      // 2. Gasto de Disparo ($0.0015 aproximado)
-      const usageCost = 0.0015;
-      await BalanceTransaction.create({
-        type: 'usage',
-        provider: 'openai',
-        amount: usageCost,
-        previousBalance: 10.00,
-        newBalance: 10.00 - usageCost,
-        description: 'Disparo OpenAI (gpt-4o)',
-        userId,
-        userName
-      });
-
-      // 3. Log de Proposta correspondente
-      await ProposalLog.create({
-        provider: 'openai',
-        model: 'gpt-4o',
-        platform: 'Upwork',
-        proposalData: { title: 'Exemplo de Proposta' },
-        aiResponse: { text: 'Proposta gerada com sucesso.' },
-        tokensInput: 1000,
-        tokensOutput: 500,
-        cost: usageCost,
-        userId,
-        userName
-      });
-
-      // 4. Atualiza Saldo Global
-      await Setting.upsert({ key: 'balance_openai', value: (10.00 - usageCost).toString() });
+      // 2. Atualiza Saldo Global para 10.00 exatos
+      await Setting.upsert({ key: 'balance_openai', value: '10.00' });
       
-      console.log('✅ Histórico inicial gerado com sucesso.');
+      console.log('✅ Depósito inicial gerado.');
     }
 
     app.listen(PORT, () => {
