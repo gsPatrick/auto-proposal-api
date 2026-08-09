@@ -7,6 +7,8 @@ const BalanceTransaction = require('../../models/BalanceTransaction');
 const PRICES = {
   'gpt-4o-mini': { in: 0.15, out: 0.60 },
   'gpt-4o': { in: 2.50, out: 10.00 },
+  'gpt-5': { in: 1.25, out: 10.00 },
+  'gpt-5.4': { in: 2.50, out: 15.00 },
   'gpt-5.5': { in: 5.00, out: 30.00 },
   'gpt-5.5-pro': { in: 30.00, out: 180.00 },
   'claude-haiku-4-5': { in: 1.00, out: 5.00 },
@@ -17,10 +19,25 @@ const PRICES = {
 class ProposalService {
   
   async generateProposal(data) {
-    const { 
-      provider, model, platform, 
-      systemInstruction, userPrompt, proposalData 
+    const {
+      provider, platform,
+      systemInstruction, userPrompt, proposalData
     } = data;
+
+    const taskType = data.taskType || 'GENERATE_PROPOSAL';
+    const isFollowUp = taskType === 'GENERATE_FOLLOWUP';
+
+    // Modelo: o mini é fraco demais para propostas. Nunca usar mini/vazio no OpenAI:
+    // sobe automaticamente para GPT-5. Outros modelos explícitos (gpt-5.4, gpt-4o, etc) passam normal.
+    //
+    // EXCEÇÃO: follow-up é uma mensagem de 3-4 linhas retomando contexto, não uma peça
+    // de persuasão. Não vale ~16x o custo de saída do GPT-5, então o modelo escolhido
+    // é respeitado como está - inclusive o mini.
+    let model = data.model;
+    if (!isFollowUp && provider === 'openai' && (!model || model === 'gpt-4o-mini')) {
+      model = 'gpt-5';
+    }
+    if (isFollowUp && !model) model = provider === 'openai' ? 'gpt-4o-mini' : 'claude-haiku-4-5';
 
     // Busca chaves no banco de dados se não vierem na request
     let apiKey = await this._getApiKey(provider);
@@ -59,7 +76,7 @@ class ProposalService {
         amount: cost,
         previousBalance: currentBalance,
         newBalance: newBalance,
-        description: `Disparo ${platform} (${model})`,
+        description: `${isFollowUp ? 'Follow-up' : 'Disparo'} ${platform} (${model})`,
         userId: data.userId,
         userName: data.userName
       });
@@ -76,7 +93,9 @@ class ProposalService {
         provider,
         model,
         platform: platform.trim(), // Limpa espaços para o filtro funcionar
-        proposalData,
+        // Marca a origem: sem isto, follow-up e proposta ficam indistinguiveis no
+        // historico e as metricas de custo por disparo saem infladas.
+        proposalData: { ...(proposalData || {}), taskType },
         aiResponse: result.data,
         tokensInput: result.usage.input,
         tokensOutput: result.usage.output,
@@ -96,7 +115,7 @@ class ProposalService {
     return {
       success: true,
       data: result.data,
-      logId: log.id,
+      logId: log && log.id,
       cost,
       newBalance
     };
