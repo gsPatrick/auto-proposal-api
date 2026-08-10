@@ -27,17 +27,13 @@ class ProposalService {
     const taskType = data.taskType || 'GENERATE_PROPOSAL';
     const isFollowUp = taskType === 'GENERATE_FOLLOWUP';
 
-    // Modelo: o mini é fraco demais para propostas. Nunca usar mini/vazio no OpenAI:
-    // sobe automaticamente para GPT-5. Outros modelos explícitos (gpt-5.4, gpt-4o, etc) passam normal.
-    //
-    // EXCEÇÃO: follow-up é uma mensagem de 3-4 linhas retomando contexto, não uma peça
-    // de persuasão. Não vale ~16x o custo de saída do GPT-5, então o modelo escolhido
-    // é respeitado como está - inclusive o mini.
+    // O modelo escolhido na extensão é SEMPRE respeitado, para proposta e para
+    // follow-up. Antes havia um override que promovia gpt-4o-mini para gpt-5 nas
+    // propostas: além de encarecer ~16x a saída, ele ignorava silenciosamente a
+    // seleção da interface - o dropdown dizia "mini" e o disparo saía em gpt-5.
+    // Removido a pedido: prioridade é custo, e o mini atende os dois casos.
     let model = data.model;
-    if (!isFollowUp && provider === 'openai' && (!model || model === 'gpt-4o-mini')) {
-      model = 'gpt-5';
-    }
-    if (isFollowUp && !model) model = provider === 'openai' ? 'gpt-4o-mini' : 'claude-haiku-4-5';
+    if (!model) model = provider === 'openai' ? 'gpt-4o-mini' : 'claude-haiku-4-5';
 
     // Busca chaves no banco de dados se não vierem na request
     let apiKey = await this._getApiKey(provider);
