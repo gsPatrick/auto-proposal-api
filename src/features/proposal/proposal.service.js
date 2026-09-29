@@ -26,6 +26,10 @@ class ProposalService {
 
     const taskType = data.taskType || 'GENERATE_PROPOSAL';
     const isFollowUp = taskType === 'GENERATE_FOLLOWUP';
+    // GENERATE_REPLY = resposta automatica a uma mensagem do cliente. E uma chamada
+    // curta como o follow-up, mas precisa aparecer separada no historico: sem isso
+    // ela era contabilizada como "Disparo" e inflava o custo por proposta.
+    const isReply = taskType === 'GENERATE_REPLY';
 
     // O modelo escolhido na extensão é SEMPRE respeitado, para proposta e para
     // follow-up. Antes havia um override que promovia gpt-4o-mini para gpt-5 nas
@@ -72,7 +76,7 @@ class ProposalService {
         amount: cost,
         previousBalance: currentBalance,
         newBalance: newBalance,
-        description: `${isFollowUp ? 'Follow-up' : 'Disparo'} ${platform} (${model})`,
+        description: `${isReply ? 'Resposta' : (isFollowUp ? 'Follow-up' : 'Disparo')} ${platform} (${model})`,
         userId: data.userId,
         userName: data.userName
       });
